@@ -31,6 +31,7 @@
 #include "py/runtime.h"
 #include "py/objtuple.h"
 #include "py/binary.h"
+#include "py/objstr.h"
 
 #if MICROPY_PY_UCTYPES
 
@@ -634,6 +635,28 @@ STATIC mp_obj_t uctypes_struct_bytes_at(mp_obj_t ptr, mp_obj_t size) {
 }
 MP_DEFINE_CONST_FUN_OBJ_2(uctypes_struct_bytes_at_obj, uctypes_struct_bytes_at);
 
+// string_at()
+// Capture memory at given address of given size as string.
+STATIC mp_obj_t uctypes_struct_string_at(size_t n_args, const mp_obj_t *args) {
+    byte *data = (void *)(uintptr_t)mp_obj_int_get_truncated(args[0]);
+    size_t max_len;
+    size_t len;
+    if (n_args == 2) {
+        max_len = mp_obj_get_int(args[1]);
+        if (max_len > MICROPY_PY_UCTYPES_STRING_AT_MAX_SIZE)
+            mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("specified size exceeds max_size"));
+    } else {
+        max_len = MICROPY_PY_UCTYPES_STRING_AT_MAX_SIZE;
+    }
+    len = strnlen((char *)data, max_len);
+    if (len > max_len)
+        mp_raise_msg(&mp_type_OverflowError, MP_ERROR_TEXT("string is too large"));
+    mp_obj_str_t *o = mp_obj_malloc(mp_obj_str_t, &mp_type_str);
+    mp_obj_str_set_data(o, data, len);
+    return MP_OBJ_FROM_PTR(o);
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(uctypes_struct_string_at_obj, 1, 2, uctypes_struct_string_at);
+
 STATIC MP_DEFINE_CONST_OBJ_TYPE(
     uctypes_struct_type,
     MP_QSTR_struct,
@@ -653,6 +676,7 @@ STATIC const mp_rom_map_elem_t mp_module_uctypes_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_addressof), MP_ROM_PTR(&uctypes_struct_addressof_obj) },
     { MP_ROM_QSTR(MP_QSTR_bytes_at), MP_ROM_PTR(&uctypes_struct_bytes_at_obj) },
     { MP_ROM_QSTR(MP_QSTR_bytearray_at), MP_ROM_PTR(&uctypes_struct_bytearray_at_obj) },
+    { MP_ROM_QSTR(MP_QSTR_string_at), MP_ROM_PTR(&uctypes_struct_string_at_obj) },
 
     { MP_ROM_QSTR(MP_QSTR_NATIVE), MP_ROM_INT(LAYOUT_NATIVE) },
     { MP_ROM_QSTR(MP_QSTR_LITTLE_ENDIAN), MP_ROM_INT(LAYOUT_LITTLE_ENDIAN) },

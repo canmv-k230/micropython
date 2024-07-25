@@ -39,17 +39,6 @@ Q()
 Q(*)
 Q(_)
 Q(/)
-#if MICROPY_PY_SYS_PS1_PS2
-Q(>>> )
-Q(... )
-#endif
-#if MICROPY_PY_BUILTINS_STR_OP_MODULO
-Q(%#o)
-Q(%#x)
-#else
-Q({:#o})
-Q({:#x})
-#endif
 Q({:#b})
 Q( )
 Q(\n)
@@ -63,6 +52,17 @@ Q(<genexpr>)
 Q(<string>)
 Q(<stdin>)
 Q(utf-8)
+#if MICROPY_PY_SYS_PS1_PS2
+Q(>>> )
+Q(... )
+#endif
+#if MICROPY_PY_BUILTINS_STR_OP_MODULO
+Q(%#o)
+Q(%#x)
+#else
+Q({:#o})
+Q({:#x})
+#endif
 
 #if MICROPY_MODULE_FROZEN
 Q(.frozen)

@@ -30,6 +30,10 @@
 
 #if MICROPY_PY_GC && MICROPY_ENABLE_GC
 
+#include <stdio.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+
 // collect(): run a garbage collection
 STATIC mp_obj_t py_gc_collect(void) {
     gc_collect();
@@ -81,6 +85,32 @@ STATIC mp_obj_t gc_mem_alloc(void) {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(gc_mem_alloc_obj, gc_mem_alloc);
 
+#define MEMINFO_DEV_CMD_READ (0x1024)
+
+struct meminfo_t {
+  size_t total_size;
+  size_t free_size;
+  size_t used_size;
+};
+
+// sys_heap(): return system heap info,(total, used, free)
+STATIC mp_obj_t gc_sys_heap(void) {
+    struct meminfo_t meminfo = {0, 0, 0};
+
+    int fd = open("/dev/meminfo", O_RDONLY);
+    ioctl(fd, MEMINFO_DEV_CMD_READ, &meminfo);
+    close(fd);
+
+    mp_obj_t info_obj = mp_obj_new_tuple(3, NULL);
+    mp_obj_tuple_t *info = MP_OBJ_TO_PTR(info_obj);
+    info->items[0] = mp_obj_new_int(meminfo.total_size);
+    info->items[1] = mp_obj_new_int(meminfo.used_size);
+    info->items[2] = mp_obj_new_int(meminfo.free_size);
+
+    return info_obj;
+}
+MP_DEFINE_CONST_FUN_OBJ_0(gc_sys_heap_obj, gc_sys_heap);
+
 #if MICROPY_GC_ALLOC_THRESHOLD
 STATIC mp_obj_t gc_threshold(size_t n_args, const mp_obj_t *args) {
     if (n_args == 0) {
@@ -108,6 +138,7 @@ STATIC const mp_rom_map_elem_t mp_module_gc_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_isenabled), MP_ROM_PTR(&gc_isenabled_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem_free), MP_ROM_PTR(&gc_mem_free_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem_alloc), MP_ROM_PTR(&gc_mem_alloc_obj) },
+    { MP_ROM_QSTR(MP_QSTR_sys_heap), MP_ROM_PTR(&gc_sys_heap_obj) },
     #if MICROPY_GC_ALLOC_THRESHOLD
     { MP_ROM_QSTR(MP_QSTR_threshold), MP_ROM_PTR(&gc_threshold_obj) },
     #endif

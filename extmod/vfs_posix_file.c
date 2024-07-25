@@ -129,9 +129,9 @@ STATIC mp_uint_t vfs_posix_file_read(mp_obj_t o_in, void *buf, mp_uint_t size, i
 STATIC mp_uint_t vfs_posix_file_write(mp_obj_t o_in, const void *buf, mp_uint_t size, int *errcode) {
     mp_obj_vfs_posix_file_t *o = MP_OBJ_TO_PTR(o_in);
     check_fd_is_open(o);
-    #if MICROPY_PY_OS_DUPTERM
+    #if 1
     if (o->fd <= STDERR_FILENO) {
-        mp_hal_stdout_tx_strn(buf, size);
+        mp_hal_stdout_tx_strn_cooked(buf, size);
         return size;
     }
     #endif

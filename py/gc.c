@@ -247,52 +247,15 @@ STATIC bool gc_try_add_heap(size_t failed_alloc) {
     // (13/512) is enough overhead for sufficiently large heap areas (the
     // overhead converges to 3/128, but there's some fixed overhead and some
     // rounding up of partial block sizes).
-    size_t needed = failed_alloc + MAX(2048, failed_alloc * 13 / 512);
-
-    size_t avail = gc_get_max_new_split();
-
-    DEBUG_printf("gc_try_add_heap failed_alloc " UINT_FMT ", "
-        "needed " UINT_FMT ", avail " UINT_FMT " bytes \n",
-        failed_alloc,
-        needed,
-        avail);
-
-    if (avail < needed) {
-        // Can't fit this allocation, or system heap has nearly run out anyway
-        return false;
-    }
-
-    // Deciding how much to grow the total heap by each time is tricky:
-    //
-    // - Grow by too small amounts, leads to heap fragmentation issues.
-    //
-    // - Grow by too large amounts, may lead to system heap running out of
-    //   space.
-    //
-    // Currently, this implementation is:
-    //
-    // - At minimum, aim to double the total heap size each time we add a new
-    //   heap.  i.e. without any large single allocations, total size will be
-    //   64KB -> 128KB -> 256KB -> 512KB -> 1MB, etc
-    //
-    // - If the failed allocation is too large to fit in that size, the new
-    //   heap is made exactly large enough for that allocation. Future growth
-    //   will double the total heap size again.
-    //
-    // - If the new heap won't fit in the available free space, add the largest
-    //   new heap that will fit (this may lead to failed system heap allocations
-    //   elsewhere, but some allocation will likely fail in this circumstance!)
-    size_t total_heap = 0;
-    for (mp_state_mem_area_t *area = &MP_STATE_MEM(area);
-         area != NULL;
-         area = NEXT_AREA(area)) {
-        total_heap += area->gc_pool_end - area->gc_alloc_table_start;
-        total_heap += ALLOC_TABLE_GAP_BYTE + sizeof(mp_state_mem_area_t);
-    }
-
-    DEBUG_printf("total_heap " UINT_FMT " bytes\n", total_heap);
-
-    size_t to_alloc = MIN(avail, MAX(total_heap, needed));
+    size_t gc_alloc_table_byte_len = failed_alloc / BYTES_PER_BLOCK / BLOCKS_PER_ATB;
+    #if MICROPY_ENABLE_FINALISER
+    size_t gc_finaliser_table_byte_len = failed_alloc / BYTES_PER_BLOCK / BLOCKS_PER_FTB;
+    #else
+    size_t gc_finaliser_table_byte_len = 0;
+    #endif
+    size_t needed = failed_alloc + sizeof(mp_state_mem_area_t) + gc_alloc_table_byte_len + gc_finaliser_table_byte_len + 7;
+    needed = (needed + 0xFFF) & (~0xFFFUL);
+    size_t to_alloc = MAX(1024 * 1024, needed);
 
     mp_state_mem_area_t *new_heap = MP_PLAT_ALLOC_HEAP(to_alloc);
 
@@ -703,7 +666,7 @@ void gc_info(gc_info_t *info) {
     info->free *= BYTES_PER_BLOCK;
 
     #if MICROPY_GC_SPLIT_HEAP_AUTO
-    info->max_new_split = gc_get_max_new_split();
+    info->max_new_split = 0;
     #endif
 
     GC_EXIT();

@@ -36,7 +36,7 @@
 // dispatch to the underlying stream interface of an object.
 
 // TODO: should be in mpconfig.h
-#define DEFAULT_BUFFER_SIZE 256
+#define DEFAULT_BUFFER_SIZE 4096
 
 STATIC mp_obj_t stream_readall(mp_obj_t self_in);
 

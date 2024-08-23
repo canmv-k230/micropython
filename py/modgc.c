@@ -85,7 +85,8 @@ STATIC mp_obj_t gc_mem_alloc(void) {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(gc_mem_alloc_obj, gc_mem_alloc);
 
-#define MEMINFO_DEV_CMD_READ (0x1024)
+#define MEMINFO_DEV_CMD_READ_HEAP       (0x1024 + 0)
+#define MEMINFO_DEV_CMD_READ_PAGE       (0x1024 + 1)
 
 struct meminfo_t {
   size_t total_size;
@@ -93,12 +94,11 @@ struct meminfo_t {
   size_t used_size;
 };
 
-// sys_heap(): return system heap info,(total, used, free)
-STATIC mp_obj_t gc_sys_heap(void) {
+STATIC mp_obj_t gc_get_meminfo(uint32_t cmd) {
     struct meminfo_t meminfo = {0, 0, 0};
 
     int fd = open("/dev/meminfo", O_RDONLY);
-    ioctl(fd, MEMINFO_DEV_CMD_READ, &meminfo);
+    ioctl(fd, cmd, &meminfo);
     close(fd);
 
     mp_obj_t info_obj = mp_obj_new_tuple(3, NULL);
@@ -109,7 +109,18 @@ STATIC mp_obj_t gc_sys_heap(void) {
 
     return info_obj;
 }
+
+// sys_heap(): return system heap info,(total, used, free)
+STATIC mp_obj_t gc_sys_heap(void) {
+    return gc_get_meminfo(MEMINFO_DEV_CMD_READ_HEAP);
+}
 MP_DEFINE_CONST_FUN_OBJ_0(gc_sys_heap_obj, gc_sys_heap);
+
+// sys_page(): return system page info,(total, used, free)
+STATIC mp_obj_t gc_sys_page(void) {
+    return gc_get_meminfo(MEMINFO_DEV_CMD_READ_PAGE);
+}
+MP_DEFINE_CONST_FUN_OBJ_0(gc_sys_page_obj, gc_sys_page);
 
 #if MICROPY_GC_ALLOC_THRESHOLD
 STATIC mp_obj_t gc_threshold(size_t n_args, const mp_obj_t *args) {
@@ -139,6 +150,7 @@ STATIC const mp_rom_map_elem_t mp_module_gc_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_mem_free), MP_ROM_PTR(&gc_mem_free_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem_alloc), MP_ROM_PTR(&gc_mem_alloc_obj) },
     { MP_ROM_QSTR(MP_QSTR_sys_heap), MP_ROM_PTR(&gc_sys_heap_obj) },
+    { MP_ROM_QSTR(MP_QSTR_sys_page), MP_ROM_PTR(&gc_sys_page_obj) },
     #if MICROPY_GC_ALLOC_THRESHOLD
     { MP_ROM_QSTR(MP_QSTR_threshold), MP_ROM_PTR(&gc_threshold_obj) },
     #endif

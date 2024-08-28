@@ -24,9 +24,13 @@
  * THE SOFTWARE.
  */
 
+#include <string.h>
+
+#include "mpprint.h"
 #include "py/mpstate.h"
 #include "py/obj.h"
 #include "py/gc.h"
+#include "runtime.h"
 
 #if MICROPY_PY_GC && MICROPY_ENABLE_GC
 
@@ -122,6 +126,34 @@ STATIC mp_obj_t gc_sys_page(void) {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(gc_sys_page_obj, gc_sys_page);
 
+// sys_mmz(): return system mmz info,(total, used, free)
+STATIC mp_obj_t gc_sys_mmz(void) {
+    char buffer[231]; // dirty work, read data size 230 will recv the data we wanted.
+
+    int total, used, free;
+    memset(buffer, 0, sizeof(buffer));
+
+    int fd = open("/proc/media-mem", O_RDONLY);
+    if(0 > fd) {
+        mp_raise_OSError(errno);
+    }
+    read(fd, buffer, 230);
+    close(fd);
+    buffer[230] = 0;
+
+    sscanf(buffer, "total:%d,used:%d,remain=%d", &total, &used, &free);
+
+    mp_obj_t info_obj = mp_obj_new_tuple(3, NULL);
+    mp_obj_tuple_t *info = MP_OBJ_TO_PTR(info_obj);
+
+    info->items[0] = mp_obj_new_int(total);
+    info->items[1] = mp_obj_new_int(used);
+    info->items[2] = mp_obj_new_int(free);
+
+    return info_obj;
+}
+MP_DEFINE_CONST_FUN_OBJ_0(gc_sys_mmz_obj, gc_sys_mmz);
+
 #if MICROPY_GC_ALLOC_THRESHOLD
 STATIC mp_obj_t gc_threshold(size_t n_args, const mp_obj_t *args) {
     if (n_args == 0) {
@@ -151,6 +183,7 @@ STATIC const mp_rom_map_elem_t mp_module_gc_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_mem_alloc), MP_ROM_PTR(&gc_mem_alloc_obj) },
     { MP_ROM_QSTR(MP_QSTR_sys_heap), MP_ROM_PTR(&gc_sys_heap_obj) },
     { MP_ROM_QSTR(MP_QSTR_sys_page), MP_ROM_PTR(&gc_sys_page_obj) },
+    { MP_ROM_QSTR(MP_QSTR_sys_mmz), MP_ROM_PTR(&gc_sys_mmz_obj) },
     #if MICROPY_GC_ALLOC_THRESHOLD
     { MP_ROM_QSTR(MP_QSTR_threshold), MP_ROM_PTR(&gc_threshold_obj) },
     #endif

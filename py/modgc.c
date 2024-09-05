@@ -89,8 +89,8 @@ STATIC mp_obj_t gc_mem_alloc(void) {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(gc_mem_alloc_obj, gc_mem_alloc);
 
-#define MEMINFO_DEV_CMD_READ_HEAP       (0x1024 + 0)
-#define MEMINFO_DEV_CMD_READ_PAGE       (0x1024 + 1)
+#define MISC_DEV_CMD_READ_HEAP (0x1024 + 0)
+#define MISC_DEV_CMD_READ_PAGE (0x1024 + 1)
 
 struct meminfo_t {
   size_t total_size;
@@ -101,7 +101,7 @@ struct meminfo_t {
 STATIC mp_obj_t gc_get_meminfo(uint32_t cmd) {
     struct meminfo_t meminfo = {0, 0, 0};
 
-    int fd = open("/dev/meminfo", O_RDONLY);
+    int fd = open("/dev/canmv_misc", O_RDONLY);
     ioctl(fd, cmd, &meminfo);
     close(fd);
 
@@ -116,13 +116,13 @@ STATIC mp_obj_t gc_get_meminfo(uint32_t cmd) {
 
 // sys_heap(): return system heap info,(total, used, free)
 STATIC mp_obj_t gc_sys_heap(void) {
-    return gc_get_meminfo(MEMINFO_DEV_CMD_READ_HEAP);
+    return gc_get_meminfo(MISC_DEV_CMD_READ_HEAP);
 }
 MP_DEFINE_CONST_FUN_OBJ_0(gc_sys_heap_obj, gc_sys_heap);
 
 // sys_page(): return system page info,(total, used, free)
 STATIC mp_obj_t gc_sys_page(void) {
-    return gc_get_meminfo(MEMINFO_DEV_CMD_READ_PAGE);
+    return gc_get_meminfo(MISC_DEV_CMD_READ_PAGE);
 }
 MP_DEFINE_CONST_FUN_OBJ_0(gc_sys_page_obj, gc_sys_page);
 

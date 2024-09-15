@@ -25,6 +25,7 @@
  * THE SOFTWARE.
  */
 
+#include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -64,6 +65,11 @@ void netutils_parse_ipv4_addr(mp_obj_t addr_in, uint8_t *out_ip, netutils_endian
     }
     const char *s = addr_str;
     const char *s_top = addr_str + addr_len;
+
+    if(0x00 == isdigit(s[0])) {
+        mp_raise_ValueError(MP_ERROR_TEXT("invalid arguments"));
+    }
+
     for (mp_uint_t i = 3; ; i--) {
         mp_uint_t val = 0;
         for (; s < s_top && *s != '.'; s++) {

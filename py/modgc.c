@@ -91,6 +91,7 @@ MP_DEFINE_CONST_FUN_OBJ_0(gc_mem_alloc_obj, gc_mem_alloc);
 
 #define MISC_DEV_CMD_READ_HEAP (0x1024 + 0)
 #define MISC_DEV_CMD_READ_PAGE (0x1024 + 1)
+#define MISC_DEV_CMD_GET_MEMORY_SIZE    (0x1024 + 6)
 
 struct meminfo_t {
   size_t total_size;
@@ -102,8 +103,10 @@ STATIC mp_obj_t gc_get_meminfo(uint32_t cmd) {
     struct meminfo_t meminfo = {0, 0, 0};
 
     int fd = open("/dev/canmv_misc", O_RDONLY);
-    ioctl(fd, cmd, &meminfo);
-    close(fd);
+    if(0 <= fd) {
+        ioctl(fd, cmd, &meminfo);
+        close(fd);
+    }
 
     mp_obj_t info_obj = mp_obj_new_tuple(3, NULL);
     mp_obj_tuple_t *info = MP_OBJ_TO_PTR(info_obj);
@@ -113,6 +116,20 @@ STATIC mp_obj_t gc_get_meminfo(uint32_t cmd) {
 
     return info_obj;
 }
+
+// sys_total(): return system total memory size
+STATIC mp_obj_t gc_sys_total(void) {
+    uint64_t size = 0;
+
+    int fd = open("/dev/canmv_misc", O_RDONLY);
+    if(0 <= fd) {
+        ioctl(fd, MISC_DEV_CMD_GET_MEMORY_SIZE, &size);
+        close(fd);
+    }
+
+    return mp_obj_new_int(size);
+}
+MP_DEFINE_CONST_FUN_OBJ_0(gc_sys_total_obj, gc_sys_total);
 
 // sys_heap(): return system heap info,(total, used, free)
 STATIC mp_obj_t gc_sys_heap(void) {
@@ -181,6 +198,7 @@ STATIC const mp_rom_map_elem_t mp_module_gc_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_isenabled), MP_ROM_PTR(&gc_isenabled_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem_free), MP_ROM_PTR(&gc_mem_free_obj) },
     { MP_ROM_QSTR(MP_QSTR_mem_alloc), MP_ROM_PTR(&gc_mem_alloc_obj) },
+    { MP_ROM_QSTR(MP_QSTR_sys_total), MP_ROM_PTR(&gc_sys_total_obj) },
     { MP_ROM_QSTR(MP_QSTR_sys_heap), MP_ROM_PTR(&gc_sys_heap_obj) },
     { MP_ROM_QSTR(MP_QSTR_sys_page), MP_ROM_PTR(&gc_sys_page_obj) },
     { MP_ROM_QSTR(MP_QSTR_sys_mmz), MP_ROM_PTR(&gc_sys_mmz_obj) },
